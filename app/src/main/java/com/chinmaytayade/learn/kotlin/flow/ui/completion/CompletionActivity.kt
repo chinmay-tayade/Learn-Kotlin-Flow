@@ -1,0 +1,69 @@
+package com.chinmaytayade.learn.kotlin.flow.ui.completion
+
+import android.os.Bundle
+import android.view.View
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
+import com.chinmaytayade.learn.kotlin.flow.data.api.ApiHelperImpl
+import com.chinmaytayade.learn.kotlin.flow.data.api.RetrofitBuilder
+import com.chinmaytayade.learn.kotlin.flow.data.local.DatabaseBuilder
+import com.chinmaytayade.learn.kotlin.flow.data.local.DatabaseHelperImpl
+import com.chinmaytayade.learn.kotlin.flow.databinding.ActivityCompletionBinding
+import com.chinmaytayade.learn.kotlin.flow.utils.DefaultDispatcherProvider
+import com.chinmaytayade.learn.kotlin.flow.ui.base.UiState
+import com.chinmaytayade.learn.kotlin.flow.ui.base.ViewModelFactory
+
+class CompletionActivity : AppCompatActivity() {
+
+    private lateinit var viewModel: CompletionViewModel
+    private lateinit var binding: ActivityCompletionBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityCompletionBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setupViewModel()
+        setupObserver()
+    }
+
+    private fun setupObserver() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect {
+                    when (it) {
+                        is UiState.Success -> {
+                            binding.progressBar.visibility = View.GONE
+                            binding.textView.text = it.data
+                            binding.textView.visibility = View.VISIBLE
+                        }
+                        is UiState.Loading -> {
+                            binding.progressBar.visibility = View.VISIBLE
+                            binding.textView.visibility = View.GONE
+                        }
+                        is UiState.Error -> {
+                            //Handle Error
+                            binding.progressBar.visibility = View.GONE
+                            Toast.makeText(this@CompletionActivity, it.message, Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setupViewModel() {
+        viewModel = ViewModelProvider(
+            this, ViewModelFactory(
+                ApiHelperImpl(RetrofitBuilder.apiService),
+                DatabaseHelperImpl(DatabaseBuilder.getInstance(applicationContext)),
+                DefaultDispatcherProvider()
+            )
+        )[CompletionViewModel::class.java]
+    }
+}
